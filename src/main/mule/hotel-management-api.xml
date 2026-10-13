@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+    <http:listener-config name="hotel-management-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="hotel-management-api-config" api="resource::a68dd745-f1b0-412c-be3c-d7b4d93ff6d5:hotel-management-api:1.0.0:raml:zip:hotel-management-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <db:config name="Database_Config" doc:name="Database Config" doc:id="c22fa124-ae4c-40e2-8e8e-31f829aba0ad" >
+		<db:my-sql-connection host="localhost" port="3306" user="myuser" password="mypassword" database="mydb" />
+	</db:config>
+	<flow name="hotel-management-api-main">
+        <http:listener config-ref="hotel-management-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="hotel-management-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="hotel-management-api-console">
+        <http:listener config-ref="hotel-management-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="hotel-management-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\inventory:hotel-management-api-config">
+		<db:query-single doc:id="33e9cef3-10fa-4189-9c15-8b2a11e27dc6" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT h.hotel_id, h.name AS hotel_name,
+       rt.room_type_id, rt.name AS room_type_name, rt.max_occupancy, rt.currency,
+       DATEDIFF(:checkOut, :checkIn)         AS nights,
+       MIN(ri.total_rooms - ri.booked_rooms) AS available_rooms,
+       ROUND(AVG(ri.rate), 2)                AS rate_per_night,
+       SUM(ri.rate)                          AS total_stay_amount
+FROM room_inventory ri
+JOIN room_type rt ON rt.room_type_id = ri.room_type_id
+JOIN hotel h      ON h.hotel_id = ri.hotel_id
+WHERE ri.hotel_id  = :hotelId
+  AND h.status     = 'ACTIVE'
+  AND ri.stay_date >= :checkIn
+  AND ri.stay_date <  :checkOut
+  AND (:roomTypeId IS NULL OR rt.room_type_id  = :roomTypeId)
+  AND (:guests     IS NULL OR rt.max_occupancy >= :guests)
+GROUP BY h.hotel_id, h.name, rt.room_type_id, rt.name, rt.max_occupancy, rt.currency
+HAVING COUNT(*) = DATEDIFF(:checkOut, :checkIn)
+ORDER BY rt.room_type_id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+    hotelId:    attributes.queryParams.hotelId as Number,
+    checkIn:    attributes.queryParams.checkInDate,
+    checkOut:   attributes.queryParams.checkOutDate,
+    roomTypeId: if (attributes.queryParams.roomTypeId != null) attributes.queryParams.roomTypeId as Number else null,
+    guests:     if (attributes.queryParams.guests != null) attributes.queryParams.guests as Number else null
+}]]]></db:input-parameters>
+		</db:query-single>
+		<logger level="INFO" doc:name="Logger" doc:id="299f3734-d075-41bc-9128-5b09c3a3534d" message="#[payload]"/>
+		<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	rooms: [{
+		totalStayAmount: payload.total_stay_amount ,
+		availableRooms: payload.available_rooms ,
+		roomTypeName: payload.room_type_name,
+		ratePerNight: payload.rate_per_night,
+		currency: payload.currency,
+		maxOccupancy: payload.max_occupancy,
+		roomTypeId: payload.room_type_id
+	}],
+	nights: payload.nights,
+	hotelId: payload.hotel_id,
+	hotelName: payload.hotel_name
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="post:\bookings:application\json:hotel-management-api-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  bookingId: 900123,
+  bookingReference: "BK-20261110-A1B2C3",
+  status: "CONFIRMED",
+  hotelId: 101,
+  roomTypeId: 5,
+  checkInDate: "2026-11-10",
+  checkOutDate: "2026-11-13",
+  numberOfRooms: 1,
+  totalAmount: 15000,
+  currency: "INR",
+  createdAt: "2026-10-12T10:15:30Z"
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+</mule>
